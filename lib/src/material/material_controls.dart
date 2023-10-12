@@ -13,6 +13,8 @@ import 'package:chewie/src/notifiers/index.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:video_player/video_player.dart';
+import 'package:chewie/src/animated_play_pause.dart';
+
 
 class MaterialControls extends StatefulWidget {
   late MaterialControlsState state;
@@ -44,6 +46,7 @@ class MaterialControlsState extends State<MaterialControls>
   bool _displayTapped = false;
   Timer? _bufferingDisplayTimer;
   bool _displayBufferingIndicator = false;
+  DateTime? lastPause;
 
   final barHeight = 48.0 * 1.5;
   final marginSize = 5.0;
@@ -53,6 +56,8 @@ class MaterialControlsState extends State<MaterialControls>
 
   // We know that _chewieController is set in didChangeDependencies
   ChewieController get chewieController => _chewieController!;
+
+  var playBtnFocusNode = FocusNode(canRequestFocus: false);
 
   @override
   void initState() {
@@ -103,12 +108,17 @@ class MaterialControlsState extends State<MaterialControls>
     //     Expanded(child: Material(color: Colors.red,)),
     //   ],
     // );
+    // if(notifier.hideStuff){
+    //   return SizedBox();
+    // }
     return MouseRegion(
       onHover: (_) {
         _cancelAndRestartTimer();
       },
       child: GestureDetector(
-        onTap: () => _cancelAndRestartTimer(),
+        onTap: () {
+          _cancelAndRestartTimer();
+        } ,
         child: AbsorbPointer(
           absorbing: notifier.hideStuff,
           child: Stack(
@@ -293,9 +303,12 @@ class MaterialControlsState extends State<MaterialControls>
           mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Flexible(
+            // Flexible(child: child)
+            SizedBox(
+              height: 50,
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: <Widget>[
                   if (chewieController.isLive)
                     const Expanded(child: Text('LIVE'))
@@ -303,6 +316,7 @@ class MaterialControlsState extends State<MaterialControls>
                     _buildPosition(iconColor),
                   if (chewieController.allowMuting)
                     _buildMuteButton(controller),
+                  if (null != chewieController.additionalWidgets) ...(chewieController.additionalWidgets!(context)),
                   const Spacer(),
                   if (chewieController.allowFullScreen) _buildExpandButton(),
                 ],
@@ -442,33 +456,116 @@ class MaterialControlsState extends State<MaterialControls>
     final bool showPlayButton =
         widget.showPlayButton && !_dragging && !notifier.hideStuff;
 
-    return GestureDetector(
-      onTap: () {
-        if (_latestValue.isPlaying) {
-          if (_displayTapped) {
-            setState(() {
-              notifier.hideStuff = true;
-            });
-          } else {
-            _cancelAndRestartTimer();
-          }
-        } else {
-          playPause();
-
-          setState(() {
-            notifier.hideStuff = true;
-          });
-        }
-      },
-      child: CenterPlayButton(
-        backgroundColor: Colors.black54,
-        iconColor: Colors.white,
-        isFinished: isFinished,
-        isPlaying: controller.value.isPlaying,
-        show: showPlayButton,
-        onPressed: playPause,
+    return ColoredBox(
+      color: Colors.transparent,
+      child: Center(
+        child: UnconstrainedBox(
+          child: AnimatedOpacity(
+            opacity: showPlayButton ? 1.0 : 0.0,
+            duration: const Duration(milliseconds: 300),
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: Colors.black54,
+                shape: BoxShape.circle,
+              ),
+              // Always set the iconSize on the IconButton, not on the Icon itself:
+              // https://github.com/flutter/flutter/issues/52980
+              child: chewieController.centerPlayButtonContainer?.call(IconButton(
+                iconSize: 32,
+                padding: const EdgeInsets.all(12.0),
+                icon: isFinished
+                    ? Icon(Icons.replay, color: Colors.white)
+                    : AnimatedPlayPause(
+                  color: Colors.white,
+                  playing: controller.value.isPlaying,
+                ),
+                // onPressed: playPause,
+                onPressed: (){},
+              )) ?? IconButton(
+                iconSize: 32,
+                padding: const EdgeInsets.all(12.0),
+                icon: isFinished
+                    ? Icon(Icons.replay, color: Colors.white)
+                    : AnimatedPlayPause(
+                  color: Colors.white,
+                  playing: controller.value.isPlaying,
+                ),
+                onPressed: playPause,
+                focusNode: playBtnFocusNode,
+                // onPressed: (){},
+              ),
+            ),
+          ),
+        ),
       ),
     );
+    // return GestureDetector(
+    //   onTap: () {
+    //     if (_latestValue.isPlaying) {
+    //       if (_displayTapped) {
+    //         setState(() {
+    //           notifier.hideStuff = true;
+    //         });
+    //       } else {
+    //         _cancelAndRestartTimer();
+    //       }
+    //     } else {
+    //       playPause();
+    //
+    //       setState(() {
+    //         notifier.hideStuff = true;
+    //       });
+    //     }
+    //   },
+    //   child:ColoredBox(
+    //     color: Colors.transparent,
+    //     child: Center(
+    //       child: UnconstrainedBox(
+    //         child: AnimatedOpacity(
+    //           opacity: showPlayButton ? 1.0 : 0.0,
+    //           duration: const Duration(milliseconds: 300),
+    //           child: DecoratedBox(
+    //             decoration: BoxDecoration(
+    //               color: Colors.black54,
+    //               shape: BoxShape.circle,
+    //             ),
+    //             // Always set the iconSize on the IconButton, not on the Icon itself:
+    //             // https://github.com/flutter/flutter/issues/52980
+    //             child: chewieController.centerPlayButtonContainer?.call(IconButton(
+    //               iconSize: 32,
+    //               padding: const EdgeInsets.all(12.0),
+    //               icon: isFinished
+    //                   ? Icon(Icons.replay, color: Colors.white)
+    //                   : AnimatedPlayPause(
+    //                 color: Colors.white,
+    //                 playing: controller.value.isPlaying,
+    //               ),
+    //               onPressed: playPause,
+    //             )) ?? IconButton(
+    //               iconSize: 32,
+    //               padding: const EdgeInsets.all(12.0),
+    //               icon: isFinished
+    //                   ? Icon(Icons.replay, color: Colors.white)
+    //                   : AnimatedPlayPause(
+    //                 color: Colors.white,
+    //                 playing: controller.value.isPlaying,
+    //               ),
+    //               onPressed: playPause,
+    //             ),
+    //           ),
+    //         ),
+    //       ),
+    //     ),
+    //   ),
+    //   // child: CenterPlayButton(
+    //   //   backgroundColor: Colors.black54,
+    //   //   iconColor: Colors.white,
+    //   //   isFinished: isFinished,
+    //   //   isPlaying: controller.value.isPlaying,
+    //   //   show: showPlayButton,
+    //   //   onPressed: playPause,
+    //   // ) ,
+    // );
   }
 
   Future<void> _onSpeedButtonTap() async {
@@ -598,7 +695,32 @@ class MaterialControlsState extends State<MaterialControls>
     });
   }
 
+  void play() {
+    // if(null != lastPause && lastPause!.add(Duration(seconds: 1)).isAfter(DateTime.now())) return;
+    // lastPause = DateTime.now();
+    final isFinished = _latestValue.position >= _latestValue.duration;
+
+    setState(() {
+      if (controller.value.isPlaying) {
+      } else {
+        _cancelAndRestartTimer();
+
+        if (!controller.value.isInitialized) {
+          controller.initialize().then((_) {
+            controller.play();
+          });
+        } else {
+          if (isFinished) {
+            controller.seekTo(Duration.zero);
+          }
+          controller.play();
+        }
+      }
+    });
+  }
   void playPause() {
+    // if(null != lastPause && lastPause!.add(Duration(seconds: 1)).isAfter(DateTime.now())) return;
+    // lastPause = DateTime.now();
     final isFinished = _latestValue.position >= _latestValue.duration;
 
     setState(() {

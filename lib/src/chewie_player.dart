@@ -387,7 +387,7 @@ class ChewieController extends ChangeNotifier {
       hideControlsTimer: hideControlsTimer ?? this.hideControlsTimer,
       progressIndicatorDelay:
           progressIndicatorDelay ?? this.progressIndicatorDelay,
-    );
+    )..additionalWidgets = this.additionalWidgets;
   }
 
   static const defaultHideControlsTimer = Duration(seconds: 3);
@@ -417,6 +417,9 @@ class ChewieController extends ChangeNotifier {
 
   /// Add your own additional options on top of chewie options
   final List<OptionItem> Function(BuildContext context)? additionalOptions;
+
+  List<Widget> Function(BuildContext context)? additionalWidgets;
+  Widget? Function(Widget widget)? centerPlayButtonContainer;
 
   /// Define here your own Widget on how your n'th subtitle will look like
   Widget Function(BuildContext context, dynamic subtitle)? subtitleBuilder;
